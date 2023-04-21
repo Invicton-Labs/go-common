@@ -15,6 +15,7 @@ import (
 	"github.com/Invicton-Labs/go-stackerr"
 	"github.com/die-net/lrucache"
 	"github.com/gregjones/httpcache"
+	"github.com/hashicorp/go-cleanhttp"
 	hashicorphttp "github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/net/http2"
 )
@@ -26,7 +27,8 @@ type NewClientInput struct {
 	// 0 for never expiring
 	CacheMaxAgeSeconds int64
 	// The base transport settings to use.
-	// This is not used for embedded Tor clients.
+	// If not provided, the default Pooled Transport from the HTTP
+	// package will be used.
 	RoundTripper http.RoundTripper
 	// The maximum number of retries for each request. If less
 	// than 0, it will be treated as unlimited (technically,
@@ -51,7 +53,11 @@ var goAwayErrorPtrType reflect.Type = reflect.TypeOf(&http2.GoAwayError{})
 func NewRoundTripper(input *NewClientInput) http.RoundTripper {
 
 	retryableClient := hashicorphttp.NewClient()
-	retryableClient.HTTPClient.Transport = input.RoundTripper
+	if input.RoundTripper == nil {
+		retryableClient.HTTPClient.Transport = cleanhttp.DefaultPooledTransport()
+	} else {
+		retryableClient.HTTPClient.Transport = input.RoundTripper
+	}
 
 	if input.Logger != nil {
 		retryableClient.Logger = input.Logger
